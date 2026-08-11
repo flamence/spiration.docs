@@ -2,8 +2,17 @@ name: 部署到 GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    paths:
+      - 'docusaurus.config.js'
+      - 'sidebars.js'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'docs/**'
+      - 'blog/**'
+      - 'src/**'
+      - 'static/**'
+      - 'i18n/**'
+
 jobs:
   build:
     name: 构建
