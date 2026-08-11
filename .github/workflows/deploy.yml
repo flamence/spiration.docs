@@ -12,6 +12,8 @@ jobs:
       - uses: actions/checkout@v7
       
       - uses: pnpm/setup@v2
+        with:
+          runtime: node@24
 
       - run: pnpm install
       
