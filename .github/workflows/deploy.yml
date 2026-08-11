@@ -13,6 +13,7 @@ jobs:
       
       - uses: pnpm/setup@v2
         with:
+          version: 12
           runtime: node@24
 
       - run: pnpm install
