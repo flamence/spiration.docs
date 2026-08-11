@@ -21,8 +21,8 @@ export default function Home() {
           <div className={styles.buttons}>
             <Link
               className="button button--secondary button--lg"
-              to="/docs/intro">
-              Spiration 文档
+              to="/docs/overview">
+              概述
             </Link>
           </div>
         </div>
