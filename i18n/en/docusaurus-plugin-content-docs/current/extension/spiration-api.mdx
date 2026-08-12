@@ -1,0 +1,90 @@
+---
+sidebar_position: 3
+---
+
+# Spiration API
+
+**Spiration API** is a set of fields and methods that you can call within a Spiration extension.
+It is not limited to compiled languages like C/C++ for dynamic library loading;
+with a suitable extension loader, extensions written in other languages can also be loaded.
+The API list provided on this page is referenced from the Doxygen comments in [extension.h](https://github.com/flamence/spiration/blob/main/common/include/extension/extension_api.h).
+
+The Spiration API is generally accessed through the `api` field provided inside `spiration::extension`.
+
+:::note
+
+These contents are still under improvement and are not a stable version.
+
+:::
+
+## Functions
+
+<details>
+<summary> `get_renderer` </summary>
+
+| Return Type | Description |
+|---|---|
+| `std::shared_ptr<spiration::renderer>` | The renderer instance of the current window. |
+
+</details>
+
+<details>
+<summary> `get_window` </summary>
+
+| Return Type | Description |
+|---|---|
+| `std::shared_ptr<spiration::window>` | The current window instance. |
+
+</details>
+
+<details>
+<summary> `tr` </summary>
+
+Retrieves translated text.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `key` | `const std::string&` | Translation key |
+| `args` | `const std::vector<std::string>&` | Argument list |
+
+| Return Type | Description |
+|---|---|
+| `std::string` | The translated string. |
+
+</details>
+
+<details>
+<summary> `log_info` </summary>
+
+Logs a formatted informational message.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `fmt` | `const std::string&` | Formatted message |
+| ... | ... | Argument list |
+
+</details>
+
+<details>
+<summary> `log_warning` </summary>
+
+Logs a formatted warning message.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `fmt` | `const std::string&` | Formatted message |
+| ... | ... | Argument list |
+
+</details>
+
+<details>
+<summary> `log_error` </summary>
+
+Logs a formatted error message.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `fmt` | `const std::string&` | Formatted message |
+| ... | ... | Argument list |
+
+</details>
