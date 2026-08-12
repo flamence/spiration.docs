@@ -124,12 +124,12 @@ public:
     #define EXPORT __attribute__((visibility("default")))
 #endif
 
-bool extension::initialize() {
+bool hello_world::initialize() {
     api->log_info("你好世界！");
     return true;
 }
 
-void extension::shutdown() {
+void hello_world::shutdown() {
     api->log_info("再见！");
 }
 
