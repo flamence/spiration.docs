@@ -1,0 +1,156 @@
+---
+sidebar_position: 2
+---
+
+# 入门
+
+请确保你已安装 [CMake](https://cmake.org/)、[clang](https://clang.llvm.org/) 或是其它可用的工具链。
+
+## 创建拓展
+
+创建文件夹，例如 `hello-world`。
+接着在文件夹下创建 `CMakeLists.txt`，配置项目。
+
+<details>
+<summary>/CMakeLists.txt</summary>
+
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(hello-world VERSION 0.1 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(FetchContent)
+FetchContent_Declare(
+    spiration
+    GIT_REPOSITORY https://github.com/flamence/spiration.git
+    GIT_TAG main
+)
+FetchContent_Populate(spiration)
+
+file(GLOB_RECURSE EXTENSION_SOURCES
+    "src/*.cpp"
+    "src/*.c"
+)
+file(GLOB_RECURSE EXTENSION_HEADERS
+    "include/*.h"
+    "include/*.hpp"
+)
+
+add_library(${PROJECT_NAME} SHARED ${EXTENSION_HEADERS} ${EXTENSION_SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(${PROJECT_NAME}
+    spiration::api
+    llama
+)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
+)
+
+install(TARGETS ${PROJECT_NAME}
+    LIBRARY DESTINATION "lib"
+)
+
+install(DIRECTORY res/
+    DESTINATION "resources"
+)
+
+```
+
+</details>
+
+依次创建文件 / 文件夹：`include/hello-world.hpp`、`res/extension.json`、`src/hello-world.cpp`。
+我们先来配置 `extension.json`。
+
+<details>
+<summary>/res/extension.json</summary>
+
+```json
+{
+    "id": "com.example.hello-world",
+    "name": "Hello World",
+    "version": "0.1",
+    "main": "libhelloworld.so",
+    "api_version": 0
+}
+
+```
+
+</details>
+
+紧接着，我们来编写拓展代码：
+
+<details>
+<summary>/include/hello-world.hpp</summary>
+
+```cpp
+#pragma once
+
+#include <extension/extension.h>
+
+class hello_world : public spiration::extension {
+public:
+    bool initialize() override;
+    void shutdown() override;
+    init_phase phase() const override { return init_phase::normal; }
+    std::string id() const override { return "com.example.hello-world"; }
+    std::string name() const override { return "Hello World"; }
+    std::string version() const override { return "0.1"; }
+    std::string description() const override { return "我的第一个 Hello World 拓展。"; }
+};
+
+```
+
+</details>
+
+<details>
+<summary>/include/hello-world.cpp</summary>
+
+```cpp
+#include <hello-world.hpp>
+
+#ifdef _WIN32
+    #define EXPORT __declspec(dllexport)
+#else
+    #define EXPORT __attribute__((visibility("default")))
+#endif
+
+bool extension::initialize() {
+    api->log_info("你好世界！");
+    return true;
+}
+
+void extension::shutdown() {
+    api->log_info("再见！");
+}
+
+extern "C" {
+    EXPORT spiration::extension* create_extension() {
+        return new hello_world();
+    }
+}
+
+```
+
+</details>
+
+## 调试拓展
+
+借助 CMake，我们能够直接启动 Spiration 来调试我们的拓展。
+现在，请你尝试运行你的拓展。
+
+如果你看到了 `你好世界！` 的日志，
+恭喜你！你成功创建了你的第一个拓展！
+
+## 打包拓展
+
+同样的，使用 CMake 进行 `package` 操作，
+即可得到拓展压缩包并分发给用户了。
