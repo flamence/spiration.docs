@@ -20,7 +20,7 @@ const config = {
 
   i18n: {
     defaultLocale: 'zh-Hans',
-    locales: ['zh-Hans'],
+    locales: ['en', 'zh-Hans'],
   },
 
   presets: [
@@ -83,7 +83,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Flamence Tech. Built with Docusaurus.`,
+        copyright: `版权所有 © ${new Date().getFullYear()} Flamence Tech，此网站使用 Docusaurus 构建。`,
       },
       prism: {
         theme: prismThemes.github,
