@@ -29,8 +29,9 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarPath: './sidebars.js',
+          editUrl: 'https://github.com/flamence/spiration.docs/edit/main',
           routeBasePath: '/',
+          sidebarPath: './sidebars.js',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -44,6 +45,12 @@ const config = {
     ({
       colorMode: {
         respectPrefersColorScheme: true,
+      },
+      docs: {
+        sidebar: {
+          autoCollapseCategories: true,
+          hideable: true,
+        },
       },
       navbar: {
         title: 'Spiration',
