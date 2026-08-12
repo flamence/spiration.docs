@@ -30,6 +30,7 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
+          routeBasePath: '/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -51,12 +52,6 @@ const config = {
           src: 'img/logo.svg',
         },
         items: [
-          {
-            type: 'docSidebar',
-            sidebarId: 'tutorialSidebar',
-            position: 'left',
-            label: '文档',
-          },
           {
             type: 'localeDropdown',
             position: 'right',
