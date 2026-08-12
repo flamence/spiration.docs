@@ -1,0 +1,90 @@
+---
+sidebar_position: 3
+---
+
+# Spiration API
+
+:::note
+
+这些内容还在改进当中，并非稳定版本。
+
+:::
+
+**Spiration API** 是一组你可以在 Spiration 拓展调用的字段及方法。
+其不仅限于 C / C++ 等编译型语言来进行动态库调用，
+若加载了适合的拓展加载器，也可以加载通过其它语言编写的拓展。
+此页面所提供的 API 列表均参考自 [extension.h](https://github.com/flamence/spiration/blob/main/common/include/extension/extension_api.h) 的 Doxygen 注释。
+
+Spiration API 一般通过 `spiration::extension` 内提供的 `api` 字段来调用。
+
+## 函数
+
+<details>
+<summary> `get_renderer` </summary>
+
+| 返回值 | 描述 |
+|---|---|
+| `std::shared_ptr<spiration::renderer>` | 当前窗口的渲染器实例。 |
+
+</details>
+
+<details>
+<summary> `get_window` </summary>
+
+| 返回值 | 描述 |
+|---|---|
+| `std::shared_ptr<spiration::window>` | 当前窗口实例。 |
+
+</details>
+
+<details>
+<summary> `tr` </summary>
+
+获取翻译文本。
+
+| 参数 | 类型 | 描述 |
+|---|---|---|
+| `key` | `const std::string&` | 翻译键 |
+| `args` | `const std::vector<std::string>& args` | 参数列表 |
+
+| 返回值 | 描述 |
+|---|---|
+| `std::string` | 翻译后的字符串。 |
+
+</details>
+
+<details>
+<summary> `log_info` </summary>
+
+记录格式化日志信息。
+
+| 参数 | 类型 | 描述 |
+|---|---|---|
+| `fmt` | `const std::string&` | 格式化消息 |
+| ... | ... | 参数列表 |
+
+</details>
+
+<details>
+<summary> `log_warning` </summary>
+
+记录格式化日志警告。
+
+| 参数 | 类型 | 描述 |
+|---|---|---|
+| `fmt` | `const std::string&` | 格式化消息 |
+| ... | ... | 参数列表 |
+
+</details>
+
+<details>
+<summary> `log_error` </summary>
+
+记录格式化日志错误。
+
+| 参数 | 类型 | 描述 |
+|---|---|---|
+| `fmt` | `const std::string&` | 格式化消息 |
+| ... | ... | 参数列表 |
+
+</details>
