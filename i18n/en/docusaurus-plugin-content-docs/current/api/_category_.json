@@ -1,6 +1,6 @@
 {
   "position": 2,
-  "label": "Extension Documentation",
+  "label": "Extension API",
   "link": {
     "type": "doc",
     "id": "overview"
