@@ -1,0 +1,93 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# 工具
+
+## 参数
+
+大多数智能体的工具调用的参数偏爱以 JSON 为格式。
+
+## 回调
+
+工具调用后，将会向上下文追加一段以 `tool` 为角色的消息。
+
+## 格式
+
+从大模型的视角出发，为了更好地规范参数及回调，Spiration 预设了三种回调格式：`raw`、`json`、`xml`。
+
+### 原始内容
+
+假设大模型借助 Spiration 读取了一个以 `Hello World!` 为内容的文件，那么应当呈现为：
+
+```
+Hello World!
+```
+
+这一格式的好处是能够使得大模型直白地得到内容，
+避免得到凌乱的内容。
+
+### JSON 格式
+
+同 [原始内容](#原始内容) 的例子一样，其呈现可为：
+
+```json
+{"content":"Hello World!"}
+```
+
+这一格式的好处是内容清晰、严格的呈现出了各种参数对应的内容。
+劣势也很明显，面对复杂的文本时，例如以下的例子：
+
+<details>
+<summary>example.py</summary>
+
+```python
+saying = "Hello World!"
+print(saying)
+
+```
+
+</details>
+
+会得到：
+
+<details>
+<summary>example.json</summary>
+
+<Tabs>
+  <TabItem value="LF">
+
+```json
+{"text":"saying = \"Hello World!\"\nprint(saying)\n"}
+```
+
+  </TabItem>
+  <TabItem value="CRLF">
+
+```json
+{"text":"saying = \"Hello World!\"\r\nprint(saying)\r\n"}
+```
+
+  </TabItem>
+</Tabs>
+
+</details>
+
+对于更复杂的内容可能更加棘手，
+且不利于大模型输入 / 输出。
+
+### XML 格式
+
+同 [原始内容](#原始内容) 的例子一样，其呈现可为：
+
+```xml
+<content>
+Hello World!
+</content>
+```
+
+尽管有标签注入的风险，
+但这无疑最适合大模型的输入 / 输出格式，
