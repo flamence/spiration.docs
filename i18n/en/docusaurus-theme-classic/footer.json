@@ -1,10 +1,4 @@
 {
-  "link.title.更多": {
-    "message": "More"
-  },
-  "link.item.label.GitHub": {
-    "message": "GitHub"
-  },
   "copyright": {
     "message": "Copyright © 2026 Flamence Tech. Built with Docusaurus."
   }
