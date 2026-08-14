@@ -72,17 +72,7 @@ const config = {
       },
       footer: {
         style: 'dark',
-        links: [
-          {
-            title: '更多',
-            items: [
-              {
-                label: 'GitHub',
-                href: 'https://github.com/flamence/spiration',
-              },
-            ],
-          },
-        ],
+        links: [],
         copyright: `版权所有 © ${new Date().getFullYear()} Flamence Tech，此网站使用 Docusaurus 构建。`,
       },
       prism: {
