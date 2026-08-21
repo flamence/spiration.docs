@@ -61,6 +61,14 @@ int var; ///< 放在成员后面的简短描述
 
 详见 [Documenting the code](https://www.doxygen.nl/manual/docblocks.html)。
 
+### 引用规范
+
+对于大多数文件，都应遵循紧密、按字母排序的 `#include`。
+
+对于 Mac OS 开发，应当保持 `#include` 在前、`#import` 在后的原则，
+且对于涉及 C++ 实现的头应当使用 `#include` _(例如标准库、`spiration::core` 库)_，
+而对于纯 Objective-C 或 Objective-C++ 实现的头应当使用 `#import` _(例如 Apple 提供的头以及 Spiration 平台项目的头)_。
+
 ## 提交修改
 
 贡献者应该 [Fork](https://github.com/flamence/spiration/fork) 项目后，
