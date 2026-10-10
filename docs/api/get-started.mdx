@@ -2,6 +2,8 @@
 sidebar_position: 1
 ---
 
+import { ProjectGenerator } from '@site/src/components/ProjectGenerator';
+
 # 入门
 
 Spiration 拓展之旅的第一步，不妨来创建一个独属于你的 Hello World 拓展。
@@ -27,112 +29,21 @@ Spiration 拓展之旅的第一步，不妨来创建一个独属于你的 Hello 
 
 ## 创建拓展
 
-创建文件夹，例如 `hello-world`。先配置 `CMakeLists.txt`：
+我们推荐通过项目生成器来初始化项目：
 
-<details>
-<summary>/CMakeLists.txt</summary>
+<ProjectGenerator />
 
-```cmake
-cmake_minimum_required(VERSION 3.14)
-project(hello-world VERSION 0.1.0 LANGUAGES C)
+假定直接按照预设的拓展配置生成项目，
+看到 `/hello-world/src/main.cpp`，
+我们来编写一个简单的日志输出：
 
-include(FetchContent)
-FetchContent_Declare(
-    spiration.api
-    GIT_REPOSITORY https://github.com/flamence/spiration.api.git
-    GIT_TAG main
-)
-FetchContent_MakeAvailable(spiration.api)
-
-add_library(${PROJECT_NAME} SHARED
-    src/main.c
-)
-
-# 拓展构建必须定义 SPIRATION_EXTENSION
-target_compile_definitions(${PROJECT_NAME} PRIVATE SPIRATION_EXTENSION)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE spiration::api)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    C_STANDARD 99
-    C_STANDARD_REQUIRED ON
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
-)
-
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/res/extension.json"
-    "${CMAKE_CURRENT_BINARY_DIR}/extension.json"
-    @ONLY
-)
-
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin" LIBRARY DESTINATION "bin")
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
-```
-
-</details>
-
-接着配置清单 `res/extension.json`：
-
-<details>
-<summary>/res/extension.json</summary>
-
-```json
-{
-    "id": "com.example.hello-world",
-    "name": "Hello World",
-    "author": "you",
-    "version": "@PROJECT_VERSION@",
-    "main": "bin/@CMAKE_SHARED_LIBRARY_PREFIX@hello-world@CMAKE_SHARED_LIBRARY_SUFFIX@",
-    "api_version": 1
-}
-```
-
-`api_version` 声明拓展所需的 C API 版本。宿主只装载主版本一致、
-且自身次版本不低于所需次版本的拓展。
-
-</details>
-
-最后编写拓展本体：
-
-<details>
-<summary>/src/main.c</summary>
-
-```c
-#include <spiration/api.h>
-
+```cpp
 static spiration_bool SPIRATION_CALL on_initialize(spiration_extension_desc* self) {
     self->host->log(self, SPIRATION_LOG_INFO, SPIRATION_STR("hello, world"),
                     SPIRATION_STR_EMPTY);
     return SPIRATION_TRUE;
 }
-
-static void SPIRATION_CALL on_shutdown(spiration_extension_desc* self) {
-    SPIRATION_UNUSED(self);
-}
-
-static spiration_extension_desc g_desc = {
-    SPIRATION_STRUCT_VERSION,
-    (uint32_t)sizeof(spiration_extension_desc),
-    SPIRATION_PHASE_NORMAL,
-    SPIRATION_API_VERSION,
-    SPIRATION_STR_INIT("com.example.hello-world"),
-    SPIRATION_STR_INIT("Hello World"),
-    SPIRATION_STR_INIT("0.1.0"),
-    SPIRATION_STR_INIT(""),
-    NULL, NULL,
-    on_initialize, on_shutdown, NULL,
-    {NULL}
-};
-
-SPIRATION_DEFINE_EXTENSION_ENTRY(&g_desc)
 ```
-
-> `SPIRATION_STR_INIT(...)` 用于**初始化式**（静态描述符的字段），
-> `SPIRATION_STR(...)` 用于**表达式**（函数实参、赋值）。
-> 两者都在编译期求长，不会产生运行期开销。
-
-</details>
 
 ## 调试拓展
 
