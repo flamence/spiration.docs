@@ -4,67 +4,75 @@ sidebar_position: 1
 
 # 入门
 
-Spiration 拓展之旅的第一步不妨来创建一个独属于你的 Hello World 拓展。
-请确保你已安装 [CMake](https://cmake.org/)、[clang](https://clang.llvm.org/) 或是其它可用的工具链。
+Spiration 拓展之旅的第一步，不妨来创建一个独属于你的 Hello World 拓展。
+请确保你已安装 [CMake](https://cmake.org/) 与任意可用的 C 工具链
+（clang、gcc、MSVC 均可）。
+
+## 选择拓展形态
+
+| 形态 | 入口 | 适用场景 |
+|---|---|---|
+| **纯 C** | 导出 `spiration_extension_entry` | 追求极致稳定与跨编译器兼容 |
+| **C++** | 同上，另可用 `spiration/api.hpp` 便利封装 | 需要与宿主共同开发、复用 C++ |
+| **C++（原生对象）** | 导出 `spiration_initialize`，返回 `spiration::extension*` | 既有 C++ 拓展；宿主会传入 `host` 与描述符 |
+| **Python** | `extension.json` 声明 `"loader": "com.flamence.spiration.python"` | 快速迭代、调用 Python 生态 |
+| **Node.js** | `extension.json` 声明 `"loader": "com.flamence.spiration.node"` | 调用 npm 生态 |
+
+前两种只交换 C 结构，是新拓展的推荐做法；`spiration_initialize` 供需要以 C++
+对象（虚函数生命周期）实现的拓展使用，它在**装载期**即可拿到按本拓展特异化的
+`host` 与描述符——详见
+[设计规范 · C++ 入口的 host 参数](design.mdx#c-入口的-host-参数)。
+
+本页以**纯 C** 为例，因为它最少依赖、最能体现 C API 的约定。
 
 ## 创建拓展
 
-创建文件夹，例如 `hello-world`。
-接着在文件夹下创建 `CMakeLists.txt`，配置项目。
+创建文件夹，例如 `hello-world`。先配置 `CMakeLists.txt`：
 
 <details>
 <summary>/CMakeLists.txt</summary>
 
 ```cmake
-cmake_minimum_required(VERSION 3.28)
-project(hello-world VERSION 0.0.1 LANGUAGES C CXX)
-
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_minimum_required(VERSION 3.14)
+project(hello-world VERSION 0.1.0 LANGUAGES C)
 
 include(FetchContent)
 FetchContent_Declare(
-    spiration
-    GIT_REPOSITORY https://github.com/flamence/spiration.git
+    spiration.api
+    GIT_REPOSITORY https://github.com/flamence/spiration.api.git
     GIT_TAG main
-    SOURCE_SUBDIR api
 )
-FetchContent_Populate(spiration)
+FetchContent_MakeAvailable(spiration.api)
 
-add_library(${PROJECT_NAME} SHARED 
-    include/hello-world.hpp
-    src/hello-world.cpp
+add_library(${PROJECT_NAME} SHARED
+    src/main.c
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+# 拓展构建必须定义 SPIRATION_EXTENSION
+target_compile_definitions(${PROJECT_NAME} PRIVATE SPIRATION_EXTENSION)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    spiration::api
-    llama
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE spiration::api)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
 )
 
-install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION "lib"
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/res/extension.json"
+    "${CMAKE_CURRENT_BINARY_DIR}/extension.json"
+    @ONLY
 )
 
-install(DIRECTORY res/
-    DESTINATION "resources"
-)
-
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin" LIBRARY DESTINATION "bin")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
 ```
 
 </details>
 
-依次创建文件 / 文件夹：`res/extension.json`、`src/main.cpp`。
-我们先来配置 `extension.json`。
+接着配置清单 `res/extension.json`：
 
 <details>
 <summary>/res/extension.json</summary>
@@ -73,34 +81,56 @@ install(DIRECTORY res/
 {
     "id": "com.example.hello-world",
     "name": "Hello World",
-    "version": "0.1",
-    "main": "libhelloworld.so",
-    "api_version": 0
+    "author": "you",
+    "version": "@PROJECT_VERSION@",
+    "main": "bin/@CMAKE_SHARED_LIBRARY_PREFIX@hello-world@CMAKE_SHARED_LIBRARY_SUFFIX@",
+    "api_version": 1
 }
-
 ```
+
+`api_version` 声明拓展所需的 C API 版本。宿主只装载主版本一致、
+且自身次版本不低于所需次版本的拓展。
 
 </details>
 
-紧接着，我们来编写拓展代码：
+最后编写拓展本体：
 
 <details>
-<summary>/src/main.cpp</summary>
+<summary>/src/main.c</summary>
 
-```cpp
-#include <spiration/export.h>
+```c
+#include <spiration/api.h>
 
-extern "C" {
-    SPIRATION_EXPORT bool spiration_initialize() {
-        
-    }
-
-    SPIRATION_EXPORT void spiration_shutdown() {
-        
-    }
+static spiration_bool SPIRATION_CALL on_initialize(spiration_extension_desc* self) {
+    self->host->log(self, SPIRATION_LOG_INFO, SPIRATION_STR("hello, world"),
+                    SPIRATION_STR_EMPTY);
+    return SPIRATION_TRUE;
 }
 
+static void SPIRATION_CALL on_shutdown(spiration_extension_desc* self) {
+    SPIRATION_UNUSED(self);
+}
+
+static spiration_extension_desc g_desc = {
+    SPIRATION_STRUCT_VERSION,
+    (uint32_t)sizeof(spiration_extension_desc),
+    SPIRATION_PHASE_NORMAL,
+    SPIRATION_API_VERSION,
+    SPIRATION_STR_INIT("com.example.hello-world"),
+    SPIRATION_STR_INIT("Hello World"),
+    SPIRATION_STR_INIT("0.1.0"),
+    SPIRATION_STR_INIT(""),
+    NULL, NULL,
+    on_initialize, on_shutdown, NULL,
+    {NULL}
+};
+
+SPIRATION_DEFINE_EXTENSION_ENTRY(&g_desc)
 ```
+
+> `SPIRATION_STR_INIT(...)` 用于**初始化式**（静态描述符的字段），
+> `SPIRATION_STR(...)` 用于**表达式**（函数实参、赋值）。
+> 两者都在编译期求长，不会产生运行期开销。
 
 </details>
 
@@ -109,10 +139,16 @@ extern "C" {
 借助 CMake，我们能够直接启动 Spiration 来调试我们的拓展。
 现在，请你尝试运行你的拓展。
 
-如果你看到了 `你好世界！` 的日志，
+如果你看到了 `hello, world` 的日志，
 恭喜你！你成功创建了你的第一个拓展！
 
 ## 打包拓展
 
 同样的，使用 CMake 进行 `package` 操作，
 即可得到拓展压缩包并分发给用户了。
+
+## 下一步
+
+- 阅读 [设计规范](design.mdx) 了解 `str_view` 的生命周期、
+  版本兼容与装载流程；
+- 阅读 [Spiration API](spiration-api.mdx) 查阅可用函数。

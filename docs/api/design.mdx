@@ -5,4 +5,317 @@ sidebar_position: 2
 # 设计规范
 
 Spiration API 本质是一组借助 C 接口传递 C 数据的方法的集合，
-通过包装、封装、指针调用
+通过包装、封装、指针调用，使同一份拓展二进制可在不同编译器、
+不同运行时、乃至不同语言中被装载。
+
+本页是整个 C API 的设计说明。头文件位于
+[spiration.api/include/spiration](https://github.com/flamence/spiration.api/tree/main/include/spiration)，
+宿主侧实现位于
+[spiration/common/src/spiration/api.cpp](https://github.com/flamence/spiration/blob/main/common/src/spiration/api.cpp)。
+
+## 一、为什么要 C API
+
+此前拓展体系只有一条通道：动态库导出 `spiration_initialize` 返回一个
+`spiration::extension*`，宿主再以 C++ 虚函数与之交互。这等于**把 C++ ABI
+变成了拓展的接口标准**：
+
+| 问题 | 后果 |
+|---|---|
+| 跨边界传 `std::string` / `std::map` / `tl::optional` / 虚表 | 编译器、标准库、C++ 版本必须完全一致，否则直接崩溃 |
+| 无法从其他语言调用 | Python、Node.js 无法编写拓展 |
+| 没有版本概念 | 任何内部改动都可能静默破坏既有拓展 |
+
+C API 的目标是：**长期稳定、语言中立、可演进、可自我描述**。
+
+### 非目标
+
+- 不追求覆盖宿主全部内部能力，大体量能力以「可选接口」增量发布；
+- 不做纯 C 的语法糖：C 拓展直接用裸函数指针表，C++ 拓展可选
+  `spiration/api.hpp`，脚本拓展由加载器提供各语言习惯的绑定。
+
+## 二、设计原则
+
+1. **只用 C 数据。** 跨边界的一切皆为平凡可复制的 POD：整数、浮点、枚举、
+   固定布局结构体、函数指针、UTF-8 字节序列。没有 C++ 类型、STL、异常、
+   虚表与 RTTI。
+2. **函数指针表即接口。** 宿主与拓展互不链接、互不导入符号，只交换结构体
+   中的函数指针。
+3. **追加式演进。** 结构体只在尾部追加字段，函数表只在尾部追加函数指针；
+   既有字段的偏移量与语义永不改变，既有函数的下标永不改变。
+4. **显式大小与显式版本。** 每张表首两字段为 `version` 与 `size`，双方读
+   对方的值以决定「能碰多深」。
+5. **所有权在签名上可见。** 谁分配谁释放；借用语义用 `str_view` 明示。
+6. **不信任对方。** 宿主校验拓展的每一样输入，拓展也必须能拒绝不兼容宿主；
+   异常绝不跨越边界。
+7. **文本一律 UTF-8，长度显式。** 不用 `wchar_t`，不依赖 `\0` 终止。
+
+## 三、总体架构
+
+```
+                    ┌────────────────────────────────────────┐
+                    │             Spiration 宿主              │
+                    │  extension_manager ── capi 适配层       │
+                    └───────────────┬────────────────────────┘
+                                    │ ① 提供 spiration_host_api
+   ② 返回 spiration_extension_desc  │ ③ 调用 on_initialize / on_shutdown
+       ┌────────────────────────────▼────────────────────────┐
+       │                 spiration.api（C ABI）               │
+       │  version.h  base.h  extension.h  host.h  loader.h   │
+       └───┬───────────────────┬────────────────────┬────────┘
+           │                   │                    │
+   ┌───────▼──────┐   ┌────────▼────────┐   ┌───────▼────────┐
+   │ C / C++ 拓展 │   │ Python 加载器    │   │ Node.js 加载器 │
+   └──────────────┘   │ spiration.python │   │ spiration.node │
+                      └────────┬─────────┘   └───────┬────────┘
+                               │ 解释器内 API         │
+                        ┌──────▼──────┐       ┌──────▼──────┐
+                        │ Python 拓展 │       │  Node 拓展  │
+                        └─────────────┘       └─────────────┘
+```
+
+| 表 | 头文件 | 方向 | 内容 |
+|---|---|---|---|
+| `spiration_extension_desc` | `api/extension.h` | 宿主 → 拓展 | 身份信息 + 生命周期回调 |
+| `spiration_host_api` | `api/host.h` | 拓展 → 宿主 | 内存、日志、线程、路径、翻译、事件、服务、注册表、接口、加载器 |
+| `spiration_loader_api` | `api/loader.h` | 宿主 → 加载器 | `probe` / `instantiate` / `release` |
+| `spiration_ui_api` | `api/ui.h` | 拓展 → 宿主 | 可选接口：控件、标签页、菜单 |
+
+## 四、边界上的数据
+
+| 类型 | 说明 |
+|---|---|
+| `spiration_bool` | `uint8_t`，固定 1 字节 |
+| `spiration_status` | 状态码枚举，只追加不复用 |
+| `spiration_log_level` | 与 `spiration::logging::level` 一一对应 |
+| `spiration_str_view` | `{const char* data; size_t length;}`，UTF-8，借用语义 |
+| `spiration_color` | 四个 `float`，分量 `[0,1]` |
+| `spiration_value` | 标签化联合体：BOOL/INT/FLOAT/STRING/COLOR/STRINGS/POINTER |
+
+`spiration_value` 是 C API 中唯一的「万能值」，用于控件属性读写等场景，
+使接口表面保持窄小：新增能力优先复用它，而不是新增函数。
+
+`spiration_tab`、`spiration_widget` 等为**只声明不定义**的不透明结构体，
+拓展只能持有指针、不能解引用，宿主因此可以自由改变其内部布局。
+
+### 字符串与生命周期
+
+1. **输入字符串**（拓展 → 宿主）由拓展提供，仅在**该次调用期间**有效。
+2. **输出字符串**（宿主 → 拓展）指向**本线程结果区**：
+   - 结果区按调用累积；
+   - 一次拓展回调返回时宿主自动清空；
+   - 也可用 `reset_results` 主动清空；
+   - 需要跨回调长期持有 → **必须拷贝**。
+3. **内存所有权**：宿主分配的内存只能由 `host->dealloc` 释放。
+
+## 五、版本与兼容性
+
+```
+SPIRATION_API_VERSION = (major << 16) | (minor << 8) | patch    // 当前 1.0.0
+```
+
+| 变更类型 | 处理 |
+|---|---|
+| 破坏性变更 | `major` +1，宿主拒绝旧主版本的拓展 |
+| 尾部追加字段 / 函数指针 | `minor` +1，旧拓展照常工作 |
+| 文档、注释、实现修复 | `patch` +1 |
+
+唯一判据宏，宿主与拓展共用：
+
+```c
+SPIRATION_API_VERSION_COMPATIBLE(host_version, required_version)
+/* 主版本相同 && 宿主次版本 >= 所需次版本 */
+```
+
+每张表尾部都有 `void* reserved[N]`（必须为 `NULL`）。新函数永远占用
+`reserved` 的前几格，从而冻结既有函数偏移量；`reserved` 用尽时提升 `major`。
+
+## 六、宿主函数表
+
+| # | 函数 | 用途 |
+|---|---|---|
+| 1-3 | `alloc` / `realloc` / `dealloc` | 宿主堆内存，避免跨 CRT 释放 |
+| 4 | `log` | 分级日志，自动标注 `extension/<短名>[/<tag>]` |
+| 5-6 | `last_error` / `reset_results` | 错误详情与结果区控制 |
+| 7-8 | `is_host_thread` / `dispatch` | 线程判定与回投主线程 |
+| 9-10 | `extension_path` / `data_path` | 安装目录与私有数据目录（拒绝 `..` 逃逸） |
+| 11-12 | `translate` / `load_translations` | 国际化 |
+| 13-15 | `subscribe` / `unsubscribe` / `publish` | 事件总线 |
+| 16-17 | `register_service` / `query_service` | 拓展间服务发现 |
+| 18-19 | `find_extension` / `enumerate_extensions` | 拓展注册表 |
+| 20 | `query_interface` | 取得可选接口 |
+| 21-22 | `register_loader` / `query_loader` | 加载器注册与查询 |
+
+与原 `extension_api` 的对应关系见
+[Spiration API](spiration-api.mdx#迁移对照表)。
+
+## 七、装载流程
+
+```
+1. 宿主扫描拓展目录，读取 extension.json
+2. 校验 api_version（0 = 未声明，视为兼容）
+3. 解析 depends 并拓扑排序，逐阶段初始化
+4. 若清单含 "loader" → 交给对应加载器的 instantiate()
+   否则 → 动态库依次查找入口符号：
+           spiration_extension_entry   （C API，优先）
+           spiration_initialize        （C++，宿主传入 host 与描述符）
+5. 校验描述符（version/size/id/api_version_required）
+6. 写入 desc->host，调用 on_initialize(self)
+7. 触发 "extension:loaded"
+   ……
+8. 卸载：on_shutdown → 宿主自动退订事件、注销服务、清空句柄与结果区
+   → 加载器拓展再调用 release(desc) → dlclose
+9. 触发 "extension:unloaded"
+```
+
+任何一步失败都不影响其余拓展；`on_*` 中的 C++ 异常由宿主兜住，
+绝不越过 ABI。
+
+### C++ 入口的 host 参数
+
+C++ 拓展过去拿不到宿主函数表（`spiration_initialize(manifest_data)` 无参数，
+返回裸 `spiration::extension*`）。现在入口签名改为：
+
+```cpp
+spiration::extension* spiration_initialize(
+    const spiration_host_api* host,
+    const spiration_extension_desc* self,
+    spiration_str_view manifest_json);
+```
+
+两个结构都由宿主备好，且**按拓展特异化**：`self->id` 是本拓展的标识，
+`host` 已写入，因此入口处就能打日志、取 ID：
+
+```cpp
+static spiration::extension* my_initialize(
+        const spiration_host_api* host,
+        const spiration_extension_desc* self,
+        spiration_str_view manifest_json) {
+    host->log(self, SPIRATION_LOG_INFO, SPIRATION_STR("loading"), SPIRATION_STR_EMPTY);
+    return new my_extension(self->id);   /* 日志频道自动为 extension/<短名> */
+}
+```
+
+要点：
+
+- **不依赖 C++ ABI。** 新增参数与字段一律通过 `spiration_host_api` /
+  `spiration_extension_desc` 尾部的 `reserved` 槽位追加，规则与 C API 一致；
+  宿主与拓展之间只交换 C 结构。
+- **装载期即可用。** 描述符在调用入口之前构造完毕，故 `SPIRATION_PHASE_EARLY`
+  的拓展也能立刻打日志。但 `extension_path`、界面等依赖应用/窗口的能力，
+  要等相应对象就绪后才有意义。
+- **签名变更不向后兼容。** 按签名编译的旧 C++ 拓展需要重新编译；返回类型仍是
+  `spiration::extension*`，那部分 ABI 依赖不变。C API 拓展（导出
+  `spiration_extension_entry`）不受影响。
+- 描述符的回调字段为 `NULL`（该拓展的初始化/关闭仍由 C++ 虚函数承担），
+  它在这里的作用是**承载身份**。
+
+#### 与 `extension_api` 的关系
+
+C++ 拓展仍可通过基类的 `api` 字段使用强类型的 `spiration::extension_api`
+（它在 `initialize()` 之前由宿主注入）。两者的定位是：
+
+| | `spiration_host_api` + 描述符 | `spiration::extension_api` |
+|---|---|---|
+| 形式 | C 函数指针表 | C++ 类 |
+| 可用时机 | **装载期**（入口处） | `initialize()` 及之后 |
+| ABI | 稳定，靠 `reserved` 追加演进 | 不稳定，需与宿主同编译器 |
+| 适合 | 日志、ID、路径、事件、服务 | 界面、主题等宿主内部类型密集的能力 |
+
+新代码优先用前者；后者保留给已经在用它的既有 C++ 拓展。
+
+
+## 八、加载器协议
+
+`spiration.python` 与 `spiration.node` 是**普通拓展**，而不是宿主的一部分：
+
+```c
+/* spiration.python 的核心（示意） */
+static spiration_bool on_initialize(spiration_extension_desc* self) {
+    Py_Initialize();                              /* 启动解释器 */
+    self->host->register_loader(self, &g_python_loader);
+    return SPIRATION_TRUE;
+}
+
+static spiration_extension_desc* python_instantiate(
+        const spiration_host_api* host, spiration_str_view id,
+        spiration_str_view dir, spiration_str_view entry,
+        spiration_str_view manifest_json) {
+    /* 1. 把 host 打包成 Python 模块 spiration（PyModule_Create） */
+    /* 2. 以 importlib 运行 entry 指向的 .py                       */
+    /* 3. 读取脚本暴露的 initialize / shutdown / … 并包装为回调     */
+    /* 4. 堆分配描述符并返回                                       */
+}
+```
+
+于是脚本侧只需声明加载器：
+
+```json
+{
+  "id": "com.flamence.spiration.openai",
+  "version": "0.1.0",
+  "main": "dist/extension.py",
+  "loader": "com.flamence.spiration.python",
+  "api_version": 1
+}
+```
+
+```python
+import spiration            # 由加载器注入
+import openai
+
+def initialize():
+    spiration.log_info("openai extension ready")
+
+def shutdown():
+    spiration.log_info("bye")
+```
+
+Node.js 同构。**要点**：加载器与脚本之间的边界由加载器全权定义，
+C API 只规定「宿主 ↔ 加载器」这一层，因此各语言侧可以自由演进。
+
+### 已实现的加载器
+
+| 加载器 | 机制 | 脚本侧 API |
+|---|---|---|
+| [spiration.python](https://github.com/flamence/spiration.python) | 进程内嵌 CPython 解释器 | 同步调用，注入模块 `spiration` |
+| [spiration.node](https://github.com/flamence/spiration.node) | 每个拓展一个 `node` 子进程 | 异步（`await`），行式 JSON 协议 |
+
+两者都是**普通拓展**：在入口符号中完成 `register_loader`（宿主把清单里的
+`loader` 视为隐式依赖，保证装载顺序），并在 `SPIRATION_PHASE_EARLY`
+初始化。选择子进程而非内嵌 V8，是为了零构建依赖与崩溃隔离。
+
+## 九、卸载清理
+
+拓展卸载时，宿主回收它留下的一切宿主侧资源：
+
+| 资源 | 处理 |
+|---|---|
+| 事件订阅 | 自动退订 |
+| 命名服务 | 自动注销 |
+| 待执行的 `dispatch` 任务 | 丢弃 |
+| 结果区 | 清空 |
+| **菜单项** | 移除（菜单变空则连带移除该菜单） |
+| **标签页** | 关闭（其中的控件树与回调随之销毁） |
+
+最后两项尤其重要：否则用户在拓展卸载后点击遗留的按钮或菜单项，
+宿主就会跳转进已经 `dlclose` 的动态库。
+
+## 十、线程、错误与安全
+
+- **线程**：除 `dispatch` 外，所有宿主函数仅在宿主主线程可用；宿主保证
+  所有回调都在主线程执行。`on_shutdown` 之后不再回调，未执行的
+  `dispatch` 任务被丢弃。
+- **错误**：状态码 + `last_error()`；返回指针的函数以 `NULL` 表示失败。
+  宿主永不抛出、永不 `longjmp`。
+- **安全**：宿主校验长度与 UTF-8；`extension_path` / `data_path` 规范化后
+  必须仍在根目录内。
+
+## 十一、演进自查清单
+
+修改 C API 时必须逐条确认：
+
+- [ ] 只追加字段/函数，且追加位置在尾部（占用 `reserved`）？
+- [ ] `minor` 已 +1，且头文件注释与本文档同步？
+- [ ] 新函数签名只用 POD、`str_view`、不透明句柄与回调指针？
+- [ ] 所有权与生命周期已在头文件中写明？
+- [ ] 宿主对旧版本拓展仍能正常工作？

@@ -4,81 +4,316 @@ sidebar_position: 3
 
 # Spiration API
 
-**Spiration API** 是一组你可以在 Spiration 拓展调用的字段及方法。
-其不仅限于 C / C++ 等编译型语言来进行动态库调用，
-若加载了适合的拓展加载器，也可以加载通过其它语言编写的拓展。
-此页面所提供的 API 列表均参考自 [extension.h](https://github.com/flamence/spiration/blob/main/common/include/extension/extension_api.h) 的 Doxygen 注释。
+**Spiration API** 是一组你可以在 Spiration 拓展中调用的函数与数据结构。
+它不限于 C / C++ 等编译型语言：只要声明了合适的加载器，
+也可以使用 Python、Node.js 等语言编写拓展。
 
-Spiration API 一般通过 `spiration::extension` 内提供的 `api` 字段来调用。
+本页内容与
+[spiration.api/include/spiration](https://github.com/flamence/spiration.api/tree/main/include/spiration)
+中的 Doxygen 注释保持同步。设计动机与兼容性规则见 [设计规范](design.mdx)。
 
-## 函数
+包含总入口即可获得全部声明：
+
+```c
+#include <spiration/api.h>
+```
+
+## 版本
+
+| 宏 | 说明 |
+|---|---|
+| `SPIRATION_API_VERSION` | 当前 API 版本（编码值），目前为 `1.0.0` |
+| `SPIRATION_STRUCT_VERSION` | 结构体版本，取值同上 |
+| `SPIRATION_API_VERSION_COMPATIBLE(host, required)` | 兼容性判据（宿主与拓展共用） |
+| `SPIRATION_HOST_HAS(host, field)` | 宿主函数表是否包含某字段 |
+
+## 拓展描述符
+
+```c
+typedef struct spiration_extension_desc {
+    uint32_t version;              /* [拓展] 结构体版本 */
+    uint32_t size;                 /* [拓展] 结构体字节数 */
+    spiration_init_phase phase;    /* [拓展] EARLY / NORMAL / LATE */
+    uint32_t api_version_required; /* [拓展] 所需最低 API 版本 */
+    spiration_str_view id;         /* [拓展] 唯一标识，必须非空 */
+    spiration_str_view name;       /* [拓展] 显示名称 */
+    spiration_str_view version_string; /* [拓展] 版本号字符串 */
+    spiration_str_view description;    /* [拓展] 描述 */
+    const spiration_host_api* host;    /* [宿主] 由宿主填写 */
+    void* user_data;                   /* [拓展] 自由上下文 */
+    spiration_bool (*on_initialize)(spiration_extension_desc*);
+    void (*on_shutdown)(spiration_extension_desc*);
+    void (*on_event)(spiration_extension_desc*, spiration_str_view, spiration_str_view);
+    void* reserved[8];
+} spiration_extension_desc;
+```
+
+入口符号固定为 `spiration_extension_entry`：
+
+```c
+const spiration_extension_desc* (*)(const spiration_host_api*, spiration_str_view manifest_json);
+```
+
+可用 `SPIRATION_DEFINE_EXTENSION_ENTRY(&g_desc)` 一键定义，
+用 `SPIRATION_EXTENSION_DESC_DEFAULT` 取得零值描述符。
+
+## 宿主函数表
+
+### 内存
 
 <details>
-<summary> `get_renderer` </summary>
+<summary> `alloc` / `realloc` / `dealloc` </summary>
+
+| 函数 | 签名 | 说明 |
+|---|---|---|
+| `alloc` | `void* (self, size_t size)` | 从宿主堆分配，必须由 `dealloc` 释放 |
+| `realloc` | `void* (self, void* block, size_t size)` | 调整大小；失败返回 `NULL` 且原内存仍有效 |
+| `dealloc` | `void (self, void* block)` | 释放 |
+
+> 使用宿主分配器可避免「在你的 CRT 里分配、在我的 CRT 里释放」这类崩溃。
+
+</details>
+
+### 诊断
+
+<details>
+<summary> `log` </summary>
+
+| 参数 | 类型 | 描述 |
+|---|---|---|
+| `self` | `const spiration_extension_desc*` | 描述符 |
+| `level` | `spiration_log_level` | `TRACE` / `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `message` | `spiration_str_view` | UTF-8 正文 |
+| `tag` | `spiration_str_view` | 附加标签，空串表示无 |
+
+宿主自动以 `extension/<短名>[/<tag>]` 作为日志频道。
+
+</details>
+
+<details>
+<summary> `last_error` / `reset_results` </summary>
+
+| 函数 | 说明 |
+|---|---|
+| `last_error(self)` | 取最近一次失败的描述文本 |
+| `reset_results(self)` | 清空本线程结果区，使此前取得的字符串视图全部失效 |
+
+</details>
+
+### 线程
+
+<details>
+<summary> `is_host_thread` / `dispatch` </summary>
+
+| 函数 | 说明 |
+|---|---|
+| `is_host_thread(self)` | 当前线程是否为宿主主线程 |
+| `dispatch(self, callback, user_data)` | 将回调投递到宿主主线程执行 |
+
+除 `dispatch` 外，所有宿主函数都只能在宿主主线程调用。
+
+</details>
+
+### 路径
+
+<details>
+<summary> `extension_path` / `data_path` </summary>
+
+| 函数 | 说明 |
+|---|---|
+| `extension_path(self, relative)` | 拓展安装目录下的绝对路径 |
+| `data_path(self, relative)` | 拓展私有数据目录下的绝对路径 |
+
+相对路径规范化后必须仍在根目录内，否则返回空串并置 `last_error`。
+
+</details>
+
+### 国际化
+
+<details>
+<summary> `translate` </summary>
+
+| 参数 | 类型 | 描述 |
+|---|---|---|
+| `self` | `const spiration_extension_desc*` | 描述符 |
+| `key` | `spiration_str_view` | 翻译键 |
+| `args` | `const spiration_str_view*` | 参数数组，可为 `NULL` |
+| `arg_count` | `size_t` | 参数个数 |
 
 | 返回值 | 描述 |
 |---|---|
-| `std::shared_ptr<spiration::renderer>` | 当前窗口的渲染器实例。 |
+| `spiration_str_view` | 翻译结果；缺失键时返回 `key` 本身 |
 
 </details>
 
 <details>
-<summary> `get_window` </summary>
+<summary> `load_translations` </summary>
 
-| 返回值 | 描述 |
+载入本拓展的翻译文件（Properties 格式）。相对路径以拓展目录为基准。
+
+</details>
+
+### 事件
+
+<details>
+<summary> `subscribe` / `unsubscribe` / `publish` </summary>
+
+| 函数 | 说明 |
 |---|---|
-| `std::shared_ptr<spiration::window>` | 当前窗口实例。 |
+| `subscribe(self, event, callback, user_data)` | 返回订阅 ID（> 0）；卸载时宿主自动退订 |
+| `unsubscribe(self, subscription)` | 取消订阅 |
+| `publish(self, event, data)` | 同步分发给所有订阅者 |
+
+内置事件名：`extension:loaded`、`extension:unloaded`、`tab:opened`、
+`tab:closed`、`theme:changed`。
 
 </details>
 
+### 服务
+
 <details>
-<summary> `tr` </summary>
+<summary> `register_service` / `query_service` </summary>
 
-获取翻译文本。
-
-| 参数 | 类型 | 描述 |
-|---|---|---|
-| `key` | `const std::string&` | 翻译键 |
-| `args` | `const std::vector<std::string>& args` | 参数列表 |
-
-| 返回值 | 描述 |
+| 函数 | 说明 |
 |---|---|
-| `std::string` | 翻译后的字符串。 |
+| `register_service(self, name, service)` | 注册本拓展提供的命名服务，卸载时自动注销 |
+| `query_service(self, extension_id, name)` | 查询其他拓展暴露的服务（裸指针，语义由提供方约定） |
 
 </details>
+
+### 注册表
 
 <details>
-<summary> `log_info` </summary>
+<summary> `find_extension` / `enumerate_extensions` </summary>
 
-记录格式化日志信息。
+| 函数 | 说明 |
+|---|---|
+| `find_extension(self, id)` | 按 ID 查找已装载拓展的描述符 |
+| `enumerate_extensions(self, out, capacity)` | 枚举所有已装载拓展，返回总数 |
 
-| 参数 | 类型 | 描述 |
-|---|---|---|
-| `fmt` | `const std::string&` | 格式化消息 |
-| ... | ... | 参数列表 |
+> 原生 C++ 拓展会以**垫片描述符**暴露：身份字段有效，但回调为 `NULL`。
 
 </details>
+
+### 可选接口
 
 <details>
-<summary> `log_warning` </summary>
+<summary> `query_interface` </summary>
 
-记录格式化日志警告。
+```c
+const spiration_ui_api* ui = (const spiration_ui_api*)host->query_interface(
+    self, SPIRATION_STR(SPIRATION_UI_INTERFACE_NAME), SPIRATION_UI_VERSION);
+```
 
-| 参数 | 类型 | 描述 |
-|---|---|---|
-| `fmt` | `const std::string&` | 格式化消息 |
-| ... | ... | 参数列表 |
+这是 C API 的横向扩展点：界面、主题、网络、智能体等能力均以独立接口表
+发布，避免核心函数表无限膨胀。接口表同样以 `{ uint32_t version; uint32_t size; }`
+开头。宿主不支持时返回 `NULL`。
 
 </details>
+
+### 加载器
 
 <details>
-<summary> `log_error` </summary>
+<summary> `register_loader` / `query_loader` </summary>
 
-记录格式化日志错误。
-
-| 参数 | 类型 | 描述 |
-|---|---|---|
-| `fmt` | `const std::string&` | 格式化消息 |
-| ... | ... | 参数列表 |
+加载器拓展用它们在 `SPIRATION_PHASE_EARLY` 注册自己，从而获得装载
+脚本类拓展的能力。详见 [设计规范 · 加载器协议](design.mdx#八加载器协议)。
 
 </details>
+
+## 界面接口 `spiration.ui`
+
+```c
+const spiration_ui_api* ui = (const spiration_ui_api*)host->query_interface(
+    self, SPIRATION_STR(SPIRATION_UI_INTERFACE_NAME), SPIRATION_UI_VERSION);
+```
+
+| 分类 | 函数 |
+|---|---|
+| 窗口 | `request_repaint`、`add_menu_item` |
+| 标签页 | `tab_open`、`tab_close`、`tab_activate`、`tab_set_title`、`tab_set_content`、`tab_is_alive` |
+| 控件 | `widget_create`、`widget_destroy`、`widget_append`、`widget_set`、`widget_get`、`widget_listen` |
+
+### 控件种类
+
+`CONTAINER`、`LABEL`、`BUTTON`、`CHECKBOX`、`RADIO_BUTTON`、
+`TOGGLE_SWITCH`、`SLIDER`、`PROGRESS_BAR`、`COMBO_BOX`、`LIST_VIEW`、
+`TEXT_FIELD`、`TEXT_AREA`、`SCROLL_ROW`、`SPLIT_PANE`、`COLLAPSIBLE`、
+`SEPARATOR`、`SPACER`、`MARKDOWN`。
+
+### 约定属性键
+
+| 键 | 取值类型 | 适用控件 |
+|---|---|---|
+| `x`、`y`、`width`、`height` | FLOAT | 全部 |
+| `visible`、`enabled` | BOOL | 全部 |
+| `tooltip` | STRING | 全部 |
+| `layout` | STRING（`none` / `row` / `column`） | 容器 |
+| `text` | STRING | 标签、按钮、勾选控件、输入框、Markdown |
+| `selectable`、`readonly`、`password` | BOOL | 文本类控件 |
+| `placeholder` | STRING | 输入框 |
+| `checked` | BOOL | 复选框、单选框、开关 |
+| `value` | FLOAT | 滑块、进度条 |
+| `min`、`max` | FLOAT | 滑块 |
+| `items` | STRINGS | 下拉框、列表 |
+| `selected` | INT | 下拉框、列表 |
+
+未知键返回 `SPIRATION_ERR_UNSUPPORTED`，因此后续版本可以持续增加属性而不破坏 ABI。
+
+### 约定事件键
+
+`click`、`changed`、`submit`、`activated`、`focus`、`blur`、`closed`。
+
+## 迁移对照表
+
+原 C++ `spiration::extension_api` 到 C API 的映射：
+
+| 原 C++ 方法 | C API |
+|---|---|
+| `log_trace/debug/info/warning/error(msg, tag)` | `host->log(self, level, msg, tag)` |
+| `tr(key[, args])` | `host->translate(self, key, args, count)` |
+| `extension_directory()` | `host->extension_path(self, "")` |
+| `load_translations(path)` | `host->load_translations(self, path)` |
+| `request_repaint()` | `ui->request_repaint(self)` |
+| `add_menu_item(...)` | `ui->add_menu_item(...)` |
+| `open_tab(t)` | `ui->tab_open(self, title)` |
+| `activate_tab(t)` | `ui->tab_activate(tab)` |
+| `register_theme_profile()` / `set_theme_param()` | `host->register_service("spiration.theme", ...)` |
+| `get_extension(id)` | `host->find_extension(self, id)` |
+| `get_extensions()` | `host->enumerate_extensions(self, out, cap)` |
+| `on_event` / `off_event` / `emit_event` | `host->subscribe` / `unsubscribe` / `publish` |
+| `register_service` / `get_service` | `host->register_service` / `query_service` |
+
+## 完整示例
+
+见 [spiration.api/examples/hello-world](https://github.com/flamence/spiration.api/tree/main/examples/hello-world)。
+
+## 脚本拓展
+
+若不想编写原生代码，可以使用加载器把 Python 或 JavaScript 拓展交给对应的
+运行时。清单中声明 `loader` 即可：
+
+```json
+{
+  "id": "com.example.hello-python",
+  "version": "0.1.0",
+  "main": "dist/extension.py",
+  "loader": "com.flamence.spiration.python",
+  "api_version": 1,
+  "depends": { "com.flamence.spiration.python": ">=0.1.0" }
+}
+```
+
+| 加载器 | 语言 | 脚本内 API |
+|---|---|---|
+| `com.flamence.spiration.python` | Python | `import spiration`（同步） |
+| `com.flamence.spiration.node` | JavaScript | 全局 `spiration`（异步，需 `await`） |
+
+宿主会把清单中的 `loader` 视为**隐式依赖**，因此无需手动排序；
+`depends` 中的显式声明只是双保险（并在版本不满足时给出提示）。
+
+- Python 侧：`spiration.log_info`、`spiration.tr`、`spiration.events.on`、
+  `spiration.register_service`、`spiration.ui.*`；
+- Node 侧：`spiration.logInfo`、`await spiration.tr`、
+  `await spiration.events.on`、`await spiration.registerService`、
+  `await spiration.ui.*`。
