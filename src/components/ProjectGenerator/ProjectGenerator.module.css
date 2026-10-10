@@ -1,0 +1,270 @@
+/* ============ 卡片外壳 ============ */
+
+.wrapper {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  margin: 1.5rem 0;
+  overflow: hidden;
+}
+
+/* 卡片头部：浅强调色背景，与 Docusaurus 代码块标题栏一致 */
+.header {
+  padding: 1rem 1.25rem;
+  background: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ifm-font-color-base);
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.body {
+  padding: 1.25rem;
+}
+
+/* ============ 表单 ============ */
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.input {
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font-family: var(--ifm-font-family-base);
+  font-size: 0.9rem;
+  transition: border-color var(--ifm-transition-fast) var(--ifm-transition-timing-default),
+              box-shadow var(--ifm-transition-fast) var(--ifm-transition-timing-default);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--ifm-color-primary-rgb, 53, 120, 229), 0.15);
+}
+
+/* ============ 按钮（仿 Infima .button） ============ */
+
+.primaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: var(--ifm-button-padding-vertical) var(--ifm-button-padding-horizontal);
+  border: 1px solid var(--ifm-color-primary);
+  border-radius: var(--ifm-button-border-radius);
+  background: var(--ifm-color-primary);
+  color: #fff;
+  font-family: var(--ifm-font-family-base);
+  font-size: var(--ifm-button-font-size);
+  font-weight: var(--ifm-button-font-weight);
+  line-height: 1.25;
+  cursor: pointer;
+  transition: all var(--ifm-transition-fast) var(--ifm-transition-timing-default);
+}
+
+.primaryBtn:hover:not(:disabled) {
+  background: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+  color: #fff;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: calc(var(--ifm-button-padding-vertical) * 0.75) calc(var(--ifm-button-padding-horizontal) * 0.6);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-button-border-radius);
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font-family: var(--ifm-font-family-base);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: all var(--ifm-transition-fast) var(--ifm-transition-timing-default);
+}
+
+.ghostBtn:hover {
+  background: var(--ifm-color-emphasis-200);
+  border-color: var(--ifm-color-emphasis-400);
+}
+
+/* ============ 行内提示 ============ */
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.hint code,
+.footerHint code {
+  padding: 0.15rem 0.35rem;
+  border-radius: calc(var(--ifm-global-radius) / 2);
+  background: var(--ifm-code-background);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85em;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+/* ============ 浏览视图工具栏 ============ */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  flex-wrap: wrap;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pathLabel {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+/* ============ 文件浏览器 ============ */
+
+.browser {
+  display: flex;
+  min-height: 400px;
+  max-height: 560px;
+}
+
+.sidebar {
+  flex: 0 0 240px;
+  padding: 0.4rem 0.3rem;
+  overflow: auto;
+  background: var(--ifm-background-color);
+  border-right: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ifm-code-background);
+  overflow: hidden;
+}
+
+.contentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+  flex-shrink: 0;
+}
+
+.pre {
+  flex: 1;
+  margin: 0;
+  padding: var(--ifm-pre-padding);
+  overflow: auto;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: var(--ifm-code-font-size);
+  line-height: var(--ifm-pre-line-height);
+  color: var(--ifm-font-color-base);
+  white-space: pre;
+}
+
+/* ============ 文件树行 ============ */
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--ifm-global-radius);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ifm-font-color-base);
+  transition: background var(--ifm-transition-fast) var(--ifm-transition-timing-default);
+}
+
+.treeRow:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.treeRowDir {
+  color: var(--ifm-color-emphasis-800);
+  font-weight: 500;
+}
+
+.treeRowActive,
+.treeRowActive:hover {
+  background: var(--ifm-menu-color-background-active, var(--ifm-color-primary-lightest));
+  color: var(--ifm-color-primary);
+}
+
+.caret {
+  display: inline-block;
+  width: 0.75rem;
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.icon {
+  font-size: 0.82rem;
+  line-height: 1;
+}
