@@ -1,4 +1,40 @@
 {
+  "theme.ProjectGenerator.title": {
+    "message": "Project Generator"
+  },
+  "theme.ProjectGenerator.field.name": {
+    "message": "Name"
+  },
+  "theme.ProjectGenerator.field.id": {
+    "message": "Identifier"
+  },
+  "theme.ProjectGenerator.field.displayName": {
+    "message": "Display Name"
+  },
+  "theme.ProjectGenerator.field.author": {
+    "message": "Author"
+  },
+  "theme.ProjectGenerator.field.language": {
+    "message": "Project Language"
+  },
+  "theme.ProjectGenerator.action.generate": {
+    "message": "Generate"
+  },
+  "theme.ProjectGenerator.action.back": {
+    "message": "Back"
+  },
+  "theme.ProjectGenerator.action.packaging": {
+    "message": "Packaging..."
+  },
+  "theme.ProjectGenerator.action.package": {
+    "message": "Package"
+  },
+  "theme.ProjectGenerator.action.copied": {
+    "message": "Copied ✓"
+  },
+  "theme.ProjectGenerator.action.copy": {
+    "message": "Copy"
+  },
   "theme.ErrorPageContent.title": {
     "message": "This page crashed."
   },
