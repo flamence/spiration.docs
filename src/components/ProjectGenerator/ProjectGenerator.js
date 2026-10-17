@@ -37,7 +37,6 @@ function buildFiles({ projectName, extensionId, displayName, author, language })
         "com.flamence.spiration.python": ">=0.1.0"
     }
 }
-
 `;
 
     const source = `# -*- coding: utf-8 -*-
@@ -51,7 +50,6 @@ def initialize():
 
 def shutdown():
     pass
-
 `;
 
     return [
@@ -131,7 +129,6 @@ configure_file(
 
 install(TARGETS \${PROJECT_NAME} RUNTIME DESTINATION "bin" LIBRARY DESTINATION "bin")
 install(FILES "\${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
-
 `;
 
   const json = `{
@@ -142,7 +139,6 @@ install(FILES "\${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
     "main": "bin/@CMAKE_SHARED_LIBRARY_PREFIX@${projectName}@CMAKE_SHARED_LIBRARY_SUFFIX@",
     "api_version": 0
 }
-
 `;
 
   const source = `#include ${header}
@@ -171,7 +167,6 @@ static spiration_extension_desc g_desc = {
 };
 
 SPIRATION_DEFINE_EXTENSION_ENTRY(&g_desc)
-
 `;
 
   return [
