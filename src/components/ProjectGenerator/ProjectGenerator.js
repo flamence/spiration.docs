@@ -29,10 +29,9 @@ function buildFiles({ projectName, extensionId, displayName, author, language })
     "name": "${displayName}",
     "author": "${author}",
     "version": "0.1.0",
-    "description": "A demo extension written in Python.",
     "main": "dist/extension.py",
     "loader": "com.flamence.spiration.python",
-    "api_version": 1,
+    "api_version": 0,
     "depends": {
         "com.flamence.spiration.python": ">=0.1.0"
     }
@@ -56,7 +55,7 @@ def shutdown():
 
     return [
       { path: 'extension.json', content: json   },
-      { path: 'extension.py',   content: source },
+      { path: 'dist/extension.py',   content: source },
     ];
   }
 
@@ -105,7 +104,7 @@ install(FILES "\${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
     "author": "${author}",
     "version": "@PROJECT_VERSION@",
     "main": "bin/@CMAKE_SHARED_LIBRARY_PREFIX@${projectName}@CMAKE_SHARED_LIBRARY_SUFFIX@",
-    "api_version": 1
+    "api_version": 0
 }
 
 `;
