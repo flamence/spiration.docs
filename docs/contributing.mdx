@@ -71,14 +71,26 @@ int var; ///< 放在成员后面的简短描述
 
 ## 提交修改
 
+### 分叉
+
 贡献者应该 [Fork](https://github.com/flamence/spiration/fork) 项目后，
-在本地使用 [Git](https://git-scm.cn/) 签出到分支 _(如 `feature/...`、`fix/...`)_，
+在本地使用 [Git](https://git-scm.cn/) 签出到分支，
 并将修改提交到该分支上。
 此后，在 [Pull requests](https://github.com/flamence/spiration/pulls) 页面点击 [New pull request](https://github.com/flamence/spiration/compare)，选择自己的分支并等待审查，通过后即可并入修改。
 
-> 建议在提交/拉取请求时，对版本号进行同步修改。
+### 消息
 
-对于提交，需要遵循 [约定式提交](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范。
+对于提交消息，需要遵循 [约定式提交](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范。
+
+### 尾注
+
+针对使用 AI **辅助**完成的提交，需要按照以下格式添加尾注：
+
+```
+Assisted-by: AGENT_NAME:MODEL_VERSION [TOOL1] [TOOL2]
+```
+
+> 参考 [Linux Kernel Archieve: [PATCH] checkpatch: recognize the Assisted-by: trailer](https://lkml.iu.edu/hypermail/linux/kernel/2604.3/12974.html)。
 
 ## 引入依赖
 
