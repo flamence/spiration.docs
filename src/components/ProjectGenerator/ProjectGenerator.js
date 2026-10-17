@@ -20,6 +20,7 @@ const LANGUAGE_META = {
   c:   { label: 'C',   srcPath: 'src/main.c',   header: '<spiration/api.h>',   cmakeLang: 'C',   stdVar: 'C_STANDARD', stdVal: '99' },
   cpp: { label: 'C++', srcPath: 'src/main.cpp', header: '<spiration/api.hpp>', cmakeLang: 'CXX', stdVar: 'CXX_STANDARD', stdVal: '17' },
   python: { label: 'Python' },
+  nodejs: { label: 'Node.js' },
 };
 
 function buildFiles({ projectName, extensionId, displayName, author, language }) {
@@ -56,6 +57,41 @@ def shutdown():
     return [
       { path: 'extension.json', content: json   },
       { path: 'dist/extension.py',   content: source },
+    ];
+  } else if (language === 'nodejs') {
+    const json = `{
+    "id": "${extensionId}",
+    "name": "${displayName}",
+    "author": "${author}",
+    "version": "0.1.0",
+    "main": "dist/index.js",
+    "loader": "com.flamence.spiration.node",
+    "api_version": 0,
+    "depends": {
+        "com.flamence.spiration.node": ">=0.1.0"
+    }
+}
+`;
+
+    const source = `'use strict';
+
+async function initialize() {
+  //...
+  return true;
+}
+
+async function shutdown() {
+}
+
+module.exports = {
+  initialize,
+  shutdown,
+};
+`;
+
+    return [
+      { path: 'extension.json', content: json   },
+      { path: 'dist/index.js',   content: source },
     ];
   }
 
