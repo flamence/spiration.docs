@@ -19,9 +19,47 @@ const DEFAULTS = {
 const LANGUAGE_META = {
   c:   { label: 'C',   srcPath: 'src/main.c',   header: '<spiration/api.h>',   cmakeLang: 'C',   stdVar: 'C_STANDARD', stdVal: '99' },
   cpp: { label: 'C++', srcPath: 'src/main.cpp', header: '<spiration/api.hpp>', cmakeLang: 'CXX', stdVar: 'CXX_STANDARD', stdVal: '17' },
+  python: { label: 'Python' },
 };
 
 function buildFiles({ projectName, extensionId, displayName, author, language }) {
+  if (language === 'python') {
+    const json = `{
+    "id": "${extensionId}",
+    "name": "${displayName}",
+    "author": "${author}",
+    "version": "0.1.0",
+    "description": "A demo extension written in Python.",
+    "main": "dist/extension.py",
+    "loader": "com.flamence.spiration.python",
+    "api_version": 1,
+    "depends": {
+        "com.flamence.spiration.python": ">=0.1.0"
+    }
+}
+
+`;
+
+    const source = `# -*- coding: utf-8 -*-
+
+import spiration
+
+def initialize():
+    # ...
+    return True
+
+
+def shutdown():
+    pass
+
+`;
+
+    return [
+      { path: 'extension.json', content: json   },
+      { path: 'extension.py',   content: source },
+    ];
+  }
+
   const { srcPath, header, cmakeLang, stdVar, stdVal } = LANGUAGE_META[language];
 
   const cmake = `cmake_minimum_required(VERSION 3.14)
