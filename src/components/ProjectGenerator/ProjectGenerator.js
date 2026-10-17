@@ -58,6 +58,7 @@ configure_file(
 
 install(TARGETS \${PROJECT_NAME} RUNTIME DESTINATION "bin" LIBRARY DESTINATION "bin")
 install(FILES "\${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
+
 `;
 
   const json = `{
@@ -68,6 +69,7 @@ install(FILES "\${CMAKE_CURRENT_BINARY_DIR}/extension.json" DESTINATION ".")
     "main": "bin/@CMAKE_SHARED_LIBRARY_PREFIX@${projectName}@CMAKE_SHARED_LIBRARY_SUFFIX@",
     "api_version": 1
 }
+
 `;
 
   const source = `#include ${header}
@@ -96,6 +98,7 @@ static spiration_extension_desc g_desc = {
 };
 
 SPIRATION_DEFINE_EXTENSION_ENTRY(&g_desc)
+
 `;
 
   return [
